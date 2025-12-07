@@ -121,9 +121,6 @@ public:
      * @param _bikesToFind
      * @return
      */
-
-    bool hasBikeType(size_t _bikeType);
-
 private:
     /**
      * @brief Maximum number of bikes that can be stored in this station.

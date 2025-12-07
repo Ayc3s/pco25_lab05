@@ -28,20 +28,6 @@ void BikeStation::putBike(Bike* _bike){
     mutex.unlock();
 }
 
-// todo : can be called by getBike, only with mutex, dangerous ?
-bool BikeStation::hasBikeType(size_t _bikeType) {
-    if (bikes.empty()) {
-        return false;
-    }
-
-    for (size_t i = 0 ; i < bikes.size() ; i++) {
-        if (bikes[i]->bikeType == _bikeType) {
-            return true;
-        }
-    }
-    return false;
-}
-
 Bike* BikeStation::getBike(size_t _bikeType) {
     // TODO: implement this method
 
@@ -49,7 +35,7 @@ Bike* BikeStation::getBike(size_t _bikeType) {
     mutex.lock();
 
     // while there is no right bike type
-    while (!hasBikeType(_bikeType)) {
+    while (!countBikesOfType(_bikeType)) {
         notEmpty.wait(&mutex);
     }
 
@@ -70,7 +56,7 @@ Bike* BikeStation::getBike(size_t _bikeType) {
 
     mutex.unlock();
     return result;
-    
+
 }
 
 std::vector<Bike*> BikeStation::addBikes(std::vector<Bike*> _bikesToAdd) {
@@ -86,8 +72,22 @@ std::vector<Bike*> BikeStation::getBikes(size_t _nbBikes) {
 }
 
 size_t BikeStation::countBikesOfType(size_t type) const {
-    // TODO: implement this method
-    return 0;
+
+    //todo check mutex or not ?
+
+    if (bikes.empty()) {
+        return false;
+    }
+
+    size_t count = 0;
+
+
+    for (int i = 0 ; i < bikes.size() ; i++) {
+        if (bikes[i]->bikeType == type) {
+            count++;
+        }
+    }
+    return count;;
 }
 
 size_t BikeStation::nbBikes() {
