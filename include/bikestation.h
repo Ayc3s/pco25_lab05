@@ -4,6 +4,12 @@
 #include <vector>
 #include <deque>
 #include <array>
+#include <pcosynchro/pcomanager.h>
+#include <pcosynchro/pcomutex.h>
+#include <pcosynchro/pcosemaphore.h>
+#include <pcosynchro/pcoconditionvariable.h>
+
+
 #include "bike.h"
 
 /**
@@ -109,11 +115,53 @@ public:
      */
     void ending();
 
+    /**
+     * TODO see if I copy a full tab is good and what it means with multithread
+     * @param _bikeType
+     * @param _bikesToFind
+     * @return
+     */
+
+    bool hasBikeType(size_t _bikeType);
+
 private:
     /**
      * @brief Maximum number of bikes that can be stored in this station.
      */
     const size_t capacity;
+
+    /**
+     * @ brrief Mutexprotecting all shared state of the bikeStation
+     */
+    PcoMutex mutex;
+
+
+    /**
+     *  @brief Condition variable signaled when at least one slot becomes free
+     */
+    PcoConditionVariable notFull;
+
+    /**
+     * @brief At least one bike is available
+     */
+    PcoConditionVariable notEmpty;
+
+
+    /**
+     * @brief All bikes currently in the bike station
+     */
+    std::vector<Bike*> bikes;
+
+
+    /**
+     * todo: check if its good but I was thinking to use that as a condition to stop in the right way all thread when emergency stop
+     */
+    bool shouldStop{false};
+
+
+
+
+
 };
 
 #endif // BIKESTATION_H
