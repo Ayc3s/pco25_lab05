@@ -27,7 +27,22 @@ void Person::setInterface(BikingInterface* _binkingInterface) {
 
 
 void Person::run() {
-    // TODO: implement this method
+    Bike* currentBike;
+    // first bike taken from home site
+    currentSite = homeSite;
+    //todo implement right way to end
+    while (true) {
+        currentBike = takeBikeFromSite(currentSite);
+
+        // we readapt the currentSite to be the nextSite to go on bike
+        currentSite = chooseOtherSite(currentSite);
+        bikeTo(currentSite, currentBike);
+        depositBikeAtSite(currentSite, currentBike);
+
+        // we readapt the current site to be the next site to go on foot
+        currentSite = chooseOtherSite(currentSite);
+        walkTo(currentSite);
+    }
 }
 
 Bike* Person::takeBikeFromSite(unsigned int _site) {
@@ -42,6 +57,7 @@ Bike* Person::takeBikeFromSite(unsigned int _site) {
 }
 
 void Person::depositBikeAtSite(unsigned int _site, Bike* _bike) {
+
     stations[_site]->putBike(_bike);
 
     if (binkingInterface) {

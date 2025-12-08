@@ -18,6 +18,9 @@
 class Person
 {
 public:
+
+
+
     /**
      * @brief Constructs an person with a given identifier.
      *
@@ -152,6 +155,7 @@ private:
      * @brief Shared array of bike stations for all sites and the depot.
      */
     static std::array<BikeStation*, NB_SITES_TOTAL> stations;
+    
 };
 
 #endif // PERSON_H
