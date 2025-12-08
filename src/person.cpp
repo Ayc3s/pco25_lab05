@@ -31,8 +31,8 @@ void Person::run() {
 }
 
 Bike* Person::takeBikeFromSite(unsigned int _site) {
-    Bike * bike = nullptr; // just to silence compiler warnings
-    // TODO: implement this method
+    Bike * bike = nullptr;
+    bike = stations[_site]->getBike(preferredType);
 
     if (binkingInterface) {
         binkingInterface->setBikes(_site, stations[_site]->nbBikes());
@@ -42,7 +42,7 @@ Bike* Person::takeBikeFromSite(unsigned int _site) {
 }
 
 void Person::depositBikeAtSite(unsigned int _site, Bike* _bike) {
-    // TODO: implement this method
+    stations[_site]->putBike(_bike);
 
     if (binkingInterface) {
         binkingInterface->setBikes(_site, stations[_site]->nbBikes());

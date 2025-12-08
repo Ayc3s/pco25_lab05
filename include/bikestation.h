@@ -5,6 +5,8 @@
 #include <deque>
 #include <array>
 #include "bike.h"
+#include <pcosynchro/pcoconditionvariable.h>
+#include <pcosynchro/pcomutex.h>
 
 /**
  * @brief Thread-safe bike station storing bikes by type with a limited capacity.
@@ -15,6 +17,11 @@
 class BikeStation
 {
 public:
+    PcoMutex mutex;
+    PcoConditionVariable hasVTT;
+    PcoConditionVariable hasRoad;
+    PcoConditionVariable hasGravel;
+    PcoConditionVariable canResupply; // todo maybe enlever
     /**
      * @brief Default constructor (deleted or undefined in your code base).
      *
@@ -114,6 +121,8 @@ private:
      * @brief Maximum number of bikes that can be stored in this station.
      */
     const size_t capacity;
+    std::vector<Bike*> bikes;
+    bool ended = false;
 };
 
 #endif // BIKESTATION_H

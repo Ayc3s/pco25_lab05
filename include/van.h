@@ -6,7 +6,6 @@
 #include "config.h"
 #include "bikestation.h"
 #include "bikinginterface.h"
-
 /**
  * @brief Simulates the van that rebalances bikes between sites and the depot.
  *
@@ -18,6 +17,7 @@
 class Van
 {
 public:
+
     /**
      * @brief Constructs a van with a given identifier.
      *
@@ -104,6 +104,8 @@ private:
      * @return Pointer to the bike if found, nullptr otherwise.
      */
     Bike* takeBikeFromCargo(size_t type);
+
+    size_t countBikesOfType(size_t type);
 
     /**
      * @brief Identifier of the van.
