@@ -51,81 +51,104 @@ void Van::driveTo(unsigned int _dest) {
 void Van::loadAtDepot() {
     driveTo(DEPOT_ID);
 
-    stations[DEPOT_ID]->mutex.lock();
-    if (cargo.size() < VAN_CAPACITY - 1 && stations[DEPOT_ID]->nbBikes() >= 2) {
-        size_t toLoad = std::min((size_t)2, stations[DEPOT_ID]->nbBikes());
-        std::vector<Bike*> bikes = stations[DEPOT_ID]->getBikes(std::min ((VAN_CAPACITY - 1 - cargo.size()), toLoad));
+    // lock depot because BikeStation methods don't lock internally in this repo
+    BikeStation* depot = stations[DEPOT_ID];
+    depot->mutex.lock();
+
+    size_t D = depot->nbBikes();
+    // a = current number of bikes in van
+    size_t a = cargo.size();
+    // load up to min(2, D) but don't exceed van capacity
+    size_t want = std::min((size_t)2, D);
+    size_t canLoad = (VAN_CAPACITY > a) ? (VAN_CAPACITY - a) : 0;
+    size_t toLoad = std::min(want, canLoad);
+    if (toLoad > 0) {
+        std::vector<Bike*> bikes = depot->getBikes(toLoad);
         cargo.insert(cargo.end(), bikes.begin(), bikes.end());
+        a = cargo.size();
     }
+
     if (binkingInterface) {
-        binkingInterface->setBikes(DEPOT_ID, stations[DEPOT_ID]->nbBikes());
+        binkingInterface->setBikes(DEPOT_ID, depot->nbBikes());
     }
-    stations[DEPOT_ID]->mutex.unlock();
+
+    depot->mutex.unlock();
 }
-
-
 
 void Van::balanceSite(unsigned int _site)
 {
-    stations[_site]->mutex.lock();
+    BikeStation* site = stations[_site];
+    // lock the site while we inspect and operate (station methods assume external locking)
+    site->mutex.lock();
 
-    size_t targetCapacity = stations[_site]->nbSlots() - 2;
-    size_t nbBikesOnSite = stations[_site]->nbBikes();
+    size_t B = site->nbSlots();
+    size_t Vi = site->nbBikes();
+    size_t a = cargo.size();
 
-    if (nbBikesOnSite > targetCapacity) {
-        size_t espaceDispo = VAN_CAPACITY - cargo.size();
-        size_t velosAEnlever = std::min(nbBikesOnSite - targetCapacity, espaceDispo);
-
-        if (velosAEnlever > 0) {
-            std::vector<Bike*> bikesToTake = stations[_site]->getBikes(velosAEnlever);
-            cargo.insert(cargo.end(), bikesToTake.begin(), bikesToTake.end());
+    if (Vi > B - 2) {
+        // take surplus
+        size_t surplus = Vi - (B - 2);
+        size_t freeSpace = (VAN_CAPACITY > a) ? (VAN_CAPACITY - a) : 0;
+        size_t c = std::min(surplus, freeSpace);
+        if (c > 0) {
+            std::vector<Bike*> taken = site->getBikes(c);
+            cargo.insert(cargo.end(), taken.begin(), taken.end());
+            a = cargo.size();
         }
-    } else if (nbBikesOnSite < targetCapacity) {
-        size_t toDrop = std::min(targetCapacity - nbBikesOnSite, cargo.size());
+    } else if (Vi < B - 2) {
+        // need to deposit bikes
+        size_t missing = (B - 2) - Vi;
+        size_t c = std::min(missing, a); // number we can actually deposit
+        size_t cdeposes = 0;
+        std::vector<Bike*> bikesToDeposit;
 
-        if (toDrop > 0) {
-            std::vector<Bike*> bikesToAdd;
-            size_t dropped = 0;
-
-            for (size_t type = 0; type < Bike::nbBikeTypes; ++type) {
-                if (dropped >= toDrop) break;
-
-                if (stations[_site]->countBikesOfType(type) == 0) {
-                    Bike* bike = takeBikeFromCargo(type);
-                    if (bike != nullptr) {
-                        bikesToAdd.push_back(bike);
-                        dropped++;
-                    }
+        // First, for each type missing on the site, try to deposit one of that type
+        for (size_t t = 0; t < Bike::nbBikeTypes && cdeposes < c; ++t) {
+            if (site->countBikesOfType(t) == 0) {
+                Bike* b = takeBikeFromCargo(t);
+                if (b != nullptr) {
+                    bikesToDeposit.push_back(b);
+                    ++cdeposes;
                 }
             }
-            while (dropped < toDrop && !cargo.empty()) {
-                bikesToAdd.push_back(cargo.back());
-                cargo.pop_back();
-                dropped++;
-            }
-            
-            stations[_site]->addBikes(bikesToAdd);
+        }
+
+        // If still need to deposit, deposit arbitrary bikes from cargo
+        while (cdeposes < c && !cargo.empty()) {
+            bikesToDeposit.push_back(cargo.back());
+            cargo.pop_back();
+            ++cdeposes;
+        }
+
+        if (!bikesToDeposit.empty()) {
+            site->addBikes(bikesToDeposit);
         }
     }
 
     if (binkingInterface) {
-        binkingInterface->setBikes(DEPOT_ID, stations[DEPOT_ID]->nbBikes()); // Keep somewhere for GUI
+        // update GUI for this site
+        binkingInterface->setBikes(_site, site->nbBikes());
     }
-    stations[_site]->mutex.unlock();
+
+    site->mutex.unlock();
 }
 
 void Van::returnToDepot() {
     driveTo(DEPOT_ID);
 
-    stations[DEPOT_ID]->mutex.lock();
-    stations[DEPOT_ID]->addBikes(cargo);
-    cargo.clear();
+    BikeStation* depot = stations[DEPOT_ID];
+    depot->mutex.lock();
 
-    if (binkingInterface) {
-        binkingInterface->setBikes(DEPOT_ID, stations[DEPOT_ID]->nbBikes());
+    if (!cargo.empty()) {
+        depot->addBikes(cargo);
+        cargo.clear();
     }
 
-    stations[DEPOT_ID]->mutex.unlock();
+    if (binkingInterface) {
+        binkingInterface->setBikes(DEPOT_ID, depot->nbBikes());
+    }
+
+    depot->mutex.unlock();
 }
 
 Bike* Van::takeBikeFromCargo(size_t type) {

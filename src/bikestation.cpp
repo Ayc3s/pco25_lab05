@@ -46,8 +46,18 @@ Bike* BikeStation::getBike(size_t _bikeType) {
 
     size_t ticket = getTickets[_bikeType]++;
 
-    // Attendre que ce soit notre tour et qu'un vélo soit disponible
-    while (ticket != getNext[_bikeType] || countBikesOfType(_bikeType) == 0) {
+    // Attendre que ce soit notre tour ET qu'un vélo soit dispo
+    while (true) {
+        // count bikes of requested type while holding the mutex
+        size_t available = 0;
+        for (Bike* b : bikes) {
+            if (b->bikeType == _bikeType) ++available;
+        }
+
+        if (ticket == getNext[_bikeType] && available > 0) {
+            break;
+        }
+
         if (ended) {
             mutex.unlock();
             return nullptr;
@@ -63,9 +73,7 @@ Bike* BikeStation::getBike(size_t _bikeType) {
         }
     }
 
-    // prendre le vélo
     Bike* bike = nullptr;
-    putNext++;
     for (size_t i = 0; i < bikes.size(); ++i) {
         if (bikes[i]->bikeType == _bikeType) {
             bike = bikes[i];
@@ -75,8 +83,9 @@ Bike* BikeStation::getBike(size_t _bikeType) {
     }
 
     getNext[_bikeType]++;
-    isntFull.notifyAll();  // Une place s'est libérée
+    isntFull.notifyAll();
 
+    // Notifier le prochain en attente du même type
     switch (_bikeType) {
         case 0: hasVTT.notifyAll(); break;
         case 1: hasRoad.notifyAll(); break;
@@ -88,16 +97,14 @@ Bike* BikeStation::getBike(size_t _bikeType) {
 }
 
 std::vector<Bike*> BikeStation::addBikes(std::vector<Bike*> _bikesToAdd) {
-
+    // Do not lock here: callers (Van) may hold the mutex. This function is safe
+    // to call both with and without external locking; it avoids invalid indexing.
     if (ended) {
         return _bikesToAdd;
     }
 
-    size_t freeSlots = 0;
-    if (nbSlots() > nbBikes()) freeSlots = nbSlots() - nbBikes();
-
-    size_t toAdd = std::min(freeSlots, _bikesToAdd.size());
-    for (size_t i = 0; i < toAdd; ++i) {
+    // Add as many as fit, taking from the back of the provided vector.
+    while (! _bikesToAdd.empty() && nbBikes() < nbSlots()) {
         Bike* b = _bikesToAdd.back();
         _bikesToAdd.pop_back();
         bikes.push_back(b);
@@ -108,10 +115,14 @@ std::vector<Bike*> BikeStation::addBikes(std::vector<Bike*> _bikesToAdd) {
         }
     }
 
+    // Wake up any threads waiting for space (safe to call without holding mutex).
+    isntFull.notifyAll();
+
     return _bikesToAdd;
 }
 
 std::vector<Bike*> BikeStation::getBikes(size_t _nbBikes) {
+    // Do not lock here: callers (Van) may hold the mutex.
     std::vector<Bike*> result;
     if (ended) {
         return result;
