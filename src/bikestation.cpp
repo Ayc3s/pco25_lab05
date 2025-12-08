@@ -2,6 +2,7 @@
 
 BikeStation::BikeStation(int _capacity) : capacity(_capacity) {
     bikes = std::vector<Bike*>();
+    bikes.reserve(_capacity);
 }
 
 BikeStation::~BikeStation() {
@@ -9,63 +10,112 @@ BikeStation::~BikeStation() {
 }
 
 void BikeStation::putBike(Bike* _bike){
+    unsigned int ticket;
     mutex.lock();
+    if (ended) {
+        mutex.unlock();
+        return;
+    }
+    ticket = putTicket++;
+    while (nbBikes() >= nbSlots() || ticket != putNext) {
+        if (ended) {
+            mutex.unlock();
+            return;
+        }
+        isntFull.wait(&this->mutex);
+    }
     bikes.push_back(_bike);
+    putNext++;
     if (_bike->bikeType == 0) {
-        hasVTT.notifyOne();
+        hasVTT.notifyAll();
     } else if (_bike->bikeType == 1) {
-        hasRoad.notifyOne();
+        hasRoad.notifyAll();
     } else if (_bike->bikeType == 2) {
-        hasGravel.notifyOne();
+        hasGravel.notifyAll();
     }
     mutex.unlock();
 }
 
 Bike* BikeStation::getBike(size_t _bikeType) {
     mutex.lock();
-    while (true) {
-        if (countBikesOfType(_bikeType)) {
-            for (size_t i = 0; i < bikes.size(); ++i) {
-                if (bikes[i]->bikeType == _bikeType) {
-                    Bike* bike = bikes[i];
-                    bikes.erase(bikes.begin() + i);
-                    mutex.unlock();
-                    return bike;
-                }
-            }
+
+    if (ended) {
+        mutex.unlock();
+        return nullptr;
+    }
+
+    size_t ticket = getTickets[_bikeType]++;
+
+    // Attendre que ce soit notre tour et qu'un vélo soit disponible
+    while (ticket != getNext[_bikeType] || countBikesOfType(_bikeType) == 0) {
+        if (ended) {
+            mutex.unlock();
+            return nullptr;
         }
 
-        // wait the right type of bike
         switch (_bikeType) {
-            case 0:
-                hasVTT.wait(&this->mutex);
-                break;
-            case 1:
-                hasRoad.wait(&this->mutex);
-                break;
-            case 2:
-                hasGravel.wait(&this->mutex);
-                break;
+            case 0: hasVTT.wait(&mutex); break;
+            case 1: hasRoad.wait(&mutex); break;
+            case 2: hasGravel.wait(&mutex); break;
             default:
                 mutex.unlock();
                 return nullptr;
         }
     }
+
+    // prendre le vélo
+    Bike* bike = nullptr;
+    putNext++;
+    for (size_t i = 0; i < bikes.size(); ++i) {
+        if (bikes[i]->bikeType == _bikeType) {
+            bike = bikes[i];
+            bikes.erase(bikes.begin() + i);
+            break;
+        }
+    }
+
+    getNext[_bikeType]++;
+    isntFull.notifyAll();  // Une place s'est libérée
+
+    switch (_bikeType) {
+        case 0: hasVTT.notifyAll(); break;
+        case 1: hasRoad.notifyAll(); break;
+        case 2: hasGravel.notifyAll(); break;
+    }
+
+    mutex.unlock();
+    return bike;
 }
 
 std::vector<Bike*> BikeStation::addBikes(std::vector<Bike*> _bikesToAdd) {
 
-    if (nbBikes() == nbSlots()) return _bikesToAdd;
-
-    for (size_t i = nbSlots() - nbBikes() - 1; i > 0; i--) {
-        putBike(_bikesToAdd[i]);
-        _bikesToAdd.pop_back();
+    if (ended) {
+        return _bikesToAdd;
     }
+
+    size_t freeSlots = 0;
+    if (nbSlots() > nbBikes()) freeSlots = nbSlots() - nbBikes();
+
+    size_t toAdd = std::min(freeSlots, _bikesToAdd.size());
+    for (size_t i = 0; i < toAdd; ++i) {
+        Bike* b = _bikesToAdd.back();
+        _bikesToAdd.pop_back();
+        bikes.push_back(b);
+        switch (b->bikeType) {
+            case 0: hasVTT.notifyAll(); break;
+            case 1: hasRoad.notifyAll(); break;
+            case 2: hasGravel.notifyAll(); break;
+        }
+    }
+
     return _bikesToAdd;
 }
 
 std::vector<Bike*> BikeStation::getBikes(size_t _nbBikes) {
     std::vector<Bike*> result;
+    if (ended) {
+        return result;
+    }
     for (size_t i = 0; i < _nbBikes && !bikes.empty(); ++i) {
         result.push_back(bikes.back());
         bikes.pop_back();
@@ -92,6 +142,13 @@ size_t BikeStation::nbSlots() {
 }
 
 void BikeStation::ending() {
+    mutex.lock();
     ended = true;
-   // TODO: implement this method
+
+    hasVTT.notifyAll();
+    hasRoad.notifyAll();
+    hasGravel.notifyAll();
+    isntFull.notifyAll();
+
+    mutex.unlock();
 }

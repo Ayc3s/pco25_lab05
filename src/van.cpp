@@ -1,5 +1,7 @@
 #include "van.h"
 
+#include <pcosynchro/pcothread.h>
+
 BikingInterface* Van::binkingInterface = nullptr;
 std::array<BikeStation*, NB_SITES_TOTAL> Van::stations{};
 
@@ -9,7 +11,7 @@ Van::Van(unsigned int _id)
 {}
 
 void Van::run() {
-    while (true /*TODO: clean stop*/) {
+    while (!PcoThread::thisThread()->stopRequested()) {
         loadAtDepot();
         for (unsigned int s = 0; s < NBSITES; ++s) {
             driveTo(s);
@@ -58,38 +60,51 @@ void Van::loadAtDepot() {
     if (binkingInterface) {
         binkingInterface->setBikes(DEPOT_ID, stations[DEPOT_ID]->nbBikes());
     }
-    stations[DEPOT_ID]->mutex.unlock();//todo maybe mettre unlocks avant l'interface
+    stations[DEPOT_ID]->mutex.unlock();
 }
+
 
 
 void Van::balanceSite(unsigned int _site)
 {
     stations[_site]->mutex.lock();
 
-    size_t capaciteNormale = stations[_site]->nbSlots() - 2;
-    size_t velosSurSite = stations[_site]->nbBikes();
+    size_t targetCapacity = stations[_site]->nbSlots() - 2;
+    size_t nbBikesOnSite = stations[_site]->nbBikes();
 
-    if (velosSurSite > capaciteNormale) {
-        size_t toLoad = std::min(velosSurSite - capaciteNormale,cargo.size());
+    if (nbBikesOnSite > targetCapacity) {
+        size_t espaceDispo = VAN_CAPACITY - cargo.size();
+        size_t velosAEnlever = std::min(nbBikesOnSite - targetCapacity, espaceDispo);
 
-        for (size_t i = 0; i < toLoad; ++i) {
-            size_t typeToLoad = -1;
-            for (size_t j = 0; j < Bike::nbBikeTypes; ++j) {
-                if (stations[_site]->countBikesOfType(j) < stations[_site]->countBikesOfType(typeToLoad)) {
-                    //if (countBikesOfType())
-                    //todo finir
+        if (velosAEnlever > 0) {
+            std::vector<Bike*> bikesToTake = stations[_site]->getBikes(velosAEnlever);
+            cargo.insert(cargo.end(), bikesToTake.begin(), bikesToTake.end());
+        }
+    } else if (nbBikesOnSite < targetCapacity) {
+        size_t toDrop = std::min(targetCapacity - nbBikesOnSite, cargo.size());
+
+        if (toDrop > 0) {
+            std::vector<Bike*> bikesToAdd;
+            size_t dropped = 0;
+
+            for (size_t type = 0; type < Bike::nbBikeTypes; ++type) {
+                if (dropped >= toDrop) break;
+
+                if (stations[_site]->countBikesOfType(type) == 0) {
+                    Bike* bike = takeBikeFromCargo(type);
+                    if (bike != nullptr) {
+                        bikesToAdd.push_back(bike);
+                        dropped++;
+                    }
                 }
             }
-        }
-    } else if (velosSurSite < capaciteNormale) {
-        size_t toTake = std::min(capaciteNormale - velosSurSite, VAN_CAPACITY - cargo.size());
-        if (toTake > 0) {
-            std::vector<Bike*> bikesToDeposit;
-            for (size_t i = 0; i < toTake; ++i) {
-                bikesToDeposit.push_back(cargo.back());
+            while (dropped < toDrop && !cargo.empty()) {
+                bikesToAdd.push_back(cargo.back());
                 cargo.pop_back();
+                dropped++;
             }
-            stations[_site]->addBikes(bikesToDeposit);
+            
+            stations[_site]->addBikes(bikesToAdd);
         }
     }
 

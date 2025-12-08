@@ -23,21 +23,6 @@ public:
     PcoMutex mutex;
 
     /**
-     * @brief condition of hasVTT - notify when there is a VTT available
-     */
-    PcoConditionVariable hasVTT;
-
-    /**
-     * @brief condition of hasRoad - notify when there is a Road available
-     */
-    PcoConditionVariable hasRoad;
-    /**
-    * @brief condition of hasRoad - notify when there is a hasGravel available
-    */
-    PcoConditionVariable hasGravel;
-
-    PcoConditionVariable canResupply; // todo maybe enlever
-    /**
      * @brief Default constructor (deleted or undefined in your code base).
      *
      * Declared but not defined here; if used, it must be implemented elsewhere.
@@ -132,6 +117,27 @@ public:
     void ending();
 
 private:
+
+    /**
+     * @brief condition of hasVTT - notify when there is a VTT available
+     */
+    PcoConditionVariable hasVTT;
+
+    /**
+     * @brief condition of hasRoad - notify when there is a Road available
+     */
+    PcoConditionVariable hasRoad;
+    /**
+    * @brief condition of hasRoad - notify when there is a hasGravel available
+    */
+    PcoConditionVariable hasGravel;
+
+    PcoConditionVariable isntFull;
+
+    size_t getTickets[Bike::nbBikeTypes] = {0,0,0};
+    size_t getNext[Bike::nbBikeTypes] = {0,0,0};
+    unsigned int putTicket = 0;
+    unsigned int putNext = 0;
     /**
      * @brief Maximum number of bikes that can be stored in this station.
      */
