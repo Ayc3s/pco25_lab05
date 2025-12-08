@@ -130,7 +130,7 @@ private:
     unsigned int id;
 
     /**
-     * @brief Preferred bike type for this person.
+     * @brief Preferred bike type for this person.nb
      *
      * The person will always try to take bikes of this type.
      */
@@ -155,7 +155,6 @@ private:
      * @brief Shared array of bike stations for all sites and the depot.
      */
     static std::array<BikeStation*, NB_SITES_TOTAL> stations;
-    
 };
 
 #endif // PERSON_H
