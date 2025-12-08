@@ -18,6 +18,8 @@ void Van::run() {
             balanceSite(s);
         }
         returnToDepot();
+
+        PcoThread::usleep(2000000);//pause
     }
     log("Van s'arrête proprement");
 }
@@ -51,21 +53,17 @@ void Van::driveTo(unsigned int _dest) {
 void Van::loadAtDepot() {
     driveTo(DEPOT_ID);
 
-    // lock depot because BikeStation methods don't lock internally in this repo
     BikeStation* depot = stations[DEPOT_ID];
     depot->mutex.lock();
 
-    size_t D = depot->nbBikes();
-    // a = current number of bikes in van
-    size_t a = cargo.size();
-    // load up to min(2, D) but don't exceed van capacity
-    size_t want = std::min((size_t)2, D);
-    size_t canLoad = (VAN_CAPACITY > a) ? (VAN_CAPACITY - a) : 0;
-    size_t toLoad = std::min(want, canLoad);
+    size_t bikeInDepot = depot->nbBikes();
+    size_t bikesInCargo = cargo.size();
+    size_t maxBikesToLoad = std::min((size_t)2, bikeInDepot);
+    size_t canLoad = (VAN_CAPACITY > bikesInCargo) ? (VAN_CAPACITY - bikesInCargo) : 0;
+    size_t toLoad = std::min(maxBikesToLoad, canLoad);
     if (toLoad > 0) {
         std::vector<Bike*> bikes = depot->getBikes(toLoad);
         cargo.insert(cargo.end(), bikes.begin(), bikes.end());
-        a = cargo.size();
     }
 
     if (binkingInterface) {
@@ -81,49 +79,46 @@ void Van::balanceSite(unsigned int _site)
     // lock the site while we inspect and operate (station methods assume external locking)
     site->mutex.lock();
 
-    size_t B = site->nbSlots();
-    size_t Vi = site->nbBikes();
-    size_t a = cargo.size();
+    size_t slotsInSite = site->nbSlots();
+    size_t bikesInSite = site->nbBikes();
+    size_t bikesInCargo = cargo.size();
 
-    if (Vi > B - 2) {
-        // take surplus
-        size_t surplus = Vi - (B - 2);
-        size_t freeSpace = (VAN_CAPACITY > a) ? (VAN_CAPACITY - a) : 0;
-        size_t c = std::min(surplus, freeSpace);
-        if (c > 0) {
-            std::vector<Bike*> taken = site->getBikes(c);
+    if (bikesInSite > slotsInSite - 2) {
+        size_t maxBikesToLoad = bikesInSite - (slotsInSite - 2);
+        size_t canLoad = (VAN_CAPACITY > bikesInCargo) ? (VAN_CAPACITY - bikesInCargo) : 0;
+        size_t toLoad = std::min(maxBikesToLoad, canLoad);
+        if (toLoad > 0) {
+            std::vector<Bike*> taken = site->getBikes(toLoad);
             cargo.insert(cargo.end(), taken.begin(), taken.end());
-            a = cargo.size();
         }
-    } else if (Vi < B - 2) {
-        // need to deposit bikes
-        size_t missing = (B - 2) - Vi;
-        size_t c = std::min(missing, a); // number we can actually deposit
-        size_t cdeposes = 0;
+    } else if (bikesInSite < slotsInSite - 2) {
+        size_t maxBikesToPut = (slotsInSite - 2) - bikesInSite;
+        size_t canPut = std::min(maxBikesToPut, bikesInCargo);
+        size_t deposed = 0;
         std::vector<Bike*> bikesToDeposit;
 
-        // First, for each type missing on the site, try to deposit one of that type
-        for (size_t t = 0; t < Bike::nbBikeTypes && cdeposes < c; ++t) {
+       for (size_t t = 0; t < Bike::nbBikeTypes && deposed < canPut; ++t) { //todo change algo maybe
             if (site->countBikesOfType(t) == 0) {
                 Bike* b = takeBikeFromCargo(t);
                 if (b != nullptr) {
                     bikesToDeposit.push_back(b);
-                    ++cdeposes;
+                    ++deposed;
                 }
             }
         }
-
-        // If still need to deposit, deposit arbitrary bikes from cargo
-        while (cdeposes < c && !cargo.empty()) {
+        // deposit any type if we still can
+        while (deposed < canPut && !cargo.empty()) {
             bikesToDeposit.push_back(cargo.back());
             cargo.pop_back();
-            ++cdeposes;
+            ++deposed;
         }
 
         if (!bikesToDeposit.empty()) {
             site->addBikes(bikesToDeposit);
         }
+
     }
+
 
     if (binkingInterface) {
         // update GUI for this site

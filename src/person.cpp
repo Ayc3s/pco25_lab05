@@ -1,6 +1,7 @@
 #include "person.h"
 #include "bike.h"
 #include <random>
+#include <pcosynchro/pcothread.h>
 
 BikingInterface* Person::binkingInterface = nullptr;
 std::array<BikeStation*, NB_SITES_TOTAL> Person::stations{};
@@ -32,11 +33,15 @@ void Person::run() {
 
     // first bike taken from home site
     currentSite = homeSite;
-    //todo implement right way to end
-    while (true) {
+    while (!PcoThread::thisThread()->stopRequested()) {
 
         // take bike from current site
         currentBike = takeBikeFromSite(currentSite);
+
+        //check if station is ending
+        if (currentBike == nullptr) {
+            break;
+        }
 
         // set and go to bike destination
         unsigned int bikeDest = chooseOtherSite(currentSite);

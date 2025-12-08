@@ -102,21 +102,30 @@ std::vector<Bike*> BikeStation::addBikes(std::vector<Bike*> _bikesToAdd) {
     if (ended) {
         return _bikesToAdd;
     }
+    // Compter les vélos ajoutés par type
+    size_t addedByType[Bike::nbBikeTypes] = {0, 0, 0};
 
     // Add as many as fit, taking from the back of the provided vector.
     while (! _bikesToAdd.empty() && nbBikes() < nbSlots()) {
         Bike* b = _bikesToAdd.back();
         _bikesToAdd.pop_back();
         bikes.push_back(b);
-        switch (b->bikeType) {
-            case 0: hasVTT.notifyAll(); break;
-            case 1: hasRoad.notifyAll(); break;
-            case 2: hasGravel.notifyAll(); break;
+        addedByType[b->bikeType]++;
+    }
+
+    for (size_t t = 0; t < Bike::nbBikeTypes; ++t) {
+        if (addedByType[t] > 0) {
+            switch (t) {
+                case 0: hasVTT.notifyAll(); break;
+                case 1: hasRoad.notifyAll(); break;
+                case 2: hasGravel.notifyAll(); break;
+            }
         }
     }
 
-    // Wake up any threads waiting for space (safe to call without holding mutex).
-    isntFull.notifyAll();
+    if (!_bikesToAdd.empty() || bikes.size() < capacity) {
+        isntFull.notifyAll();
+    }
 
     return _bikesToAdd;
 }
