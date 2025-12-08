@@ -34,6 +34,8 @@ Bike* BikeStation::getBike(size_t _bikeType) {
                 }
             }
         }
+
+        // wait the right type of bike
         switch (_bikeType) {
             case 0:
                 hasVTT.wait(&this->mutex);
@@ -52,11 +54,14 @@ Bike* BikeStation::getBike(size_t _bikeType) {
 }
 
 std::vector<Bike*> BikeStation::addBikes(std::vector<Bike*> _bikesToAdd) {
-    std::vector<Bike*> result;
-    for (Bike* bike: _bikesToAdd) {
-        putBike(bike);
+
+    if (nbBikes() == nbSlots()) return _bikesToAdd;
+
+    for (size_t i = nbSlots() - nbBikes() - 1; i > 0; i--) {
+        putBike(_bikesToAdd[i]);
+        _bikesToAdd.pop_back();
     }
-    return result;//todo jsp quoi retourner
+    return _bikesToAdd;
 }
 
 std::vector<Bike*> BikeStation::getBikes(size_t _nbBikes) {

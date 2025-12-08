@@ -17,10 +17,25 @@
 class BikeStation
 {
 public:
+    /**
+     * @brief Mutex that secure the critical section
+     */
     PcoMutex mutex;
+
+    /**
+     * @brief condition of hasVTT - notify when there is a VTT available
+     */
     PcoConditionVariable hasVTT;
+
+    /**
+     * @brief condition of hasRoad - notify when there is a Road available
+     */
     PcoConditionVariable hasRoad;
+    /**
+    * @brief condition of hasRoad - notify when there is a hasGravel available
+    */
     PcoConditionVariable hasGravel;
+
     PcoConditionVariable canResupply; // todo maybe enlever
     /**
      * @brief Default constructor (deleted or undefined in your code base).
@@ -121,7 +136,15 @@ private:
      * @brief Maximum number of bikes that can be stored in this station.
      */
     const size_t capacity;
+
+    /**
+     * @brief Bike storage of each bikestation
+     */
     std::vector<Bike*> bikes;
+
+    /**
+     * @brief when emergency stop, check this condition to return the right way
+     */
     bool ended = false;
 };
 
