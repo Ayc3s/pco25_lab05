@@ -46,7 +46,7 @@ Bike* BikeStation::getBike(size_t _bikeType) {
 
     size_t ticket = getTickets[_bikeType]++;
 
-    // Attendre que ce soit notre tour ET qu'un vélo soit dispo
+    // wait our tourn AND a bike is available
     while (true) {
         // count bikes of requested type while holding the mutex
         size_t available = 0;
@@ -85,7 +85,7 @@ Bike* BikeStation::getBike(size_t _bikeType) {
     getNext[_bikeType]++;
     isntFull.notifyAll();
 
-    // Notifier le prochain en attente du même type
+    // notify the next waiting type of bike
     switch (_bikeType) {
         case 0: hasVTT.notifyAll(); break;
         case 1: hasRoad.notifyAll(); break;
@@ -102,7 +102,7 @@ std::vector<Bike*> BikeStation::addBikes(std::vector<Bike*> _bikesToAdd) {
     if (ended) {
         return _bikesToAdd;
     }
-    // Compter les vélos ajoutés par type
+    // Count add bike per type
     size_t addedByType[Bike::nbBikeTypes] = {0, 0, 0};
 
     // Add as many as fit, taking from the back of the provided vector.

@@ -132,11 +132,30 @@ private:
     */
     PcoConditionVariable hasGravel;
 
+    /**
+    * @brief condition if bikeStation is not full.
+    */
     PcoConditionVariable isntFull;
 
+    /** TICKET SYSTEM ------
+    * @brief tab for each type of bike. Each index is the ticket system for the type of bike
+    * Exemple: getTickets[0] -> we get the next size_t of the ticket system.
+    */
     size_t getTickets[Bike::nbBikeTypes] = {0,0,0};
+
+    /**
+    * @brief get the next ticket
+    */
     size_t getNext[Bike::nbBikeTypes] = {0,0,0};
+
+    /**
+    * @brief it is the the turn of a person, 'use' his ticket and put his bike
+    */
     unsigned int putTicket = 0;
+
+    /**
+    * @brief get the next person turn.
+    */
     unsigned int putNext = 0;
     /**
      * @brief Maximum number of bikes that can be stored in this station.
