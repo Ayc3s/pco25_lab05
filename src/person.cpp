@@ -38,8 +38,8 @@ void Person::run() {
         // take bike from current site
         currentBike = takeBikeFromSite(currentSite);
 
-        //check if station is ending
-        if (currentBike == nullptr) {
+        //check if simulation stopped
+        if (currentBike == nullptr || PcoThread::thisThread()->stopRequested()) {
             break;
         }
 
@@ -47,6 +47,10 @@ void Person::run() {
         unsigned int bikeDest = chooseOtherSite(currentSite);
         bikeTo(bikeDest, currentBike);
 
+        //check if simulation stopped
+        if (PcoThread::thisThread()->stopRequested()) {
+            break;
+        }
         // drop bike a destination
         depositBikeAtSite(bikeDest, currentBike);
         currentBike = nullptr;

@@ -19,7 +19,7 @@ void Van::run() {
         }
         returnToDepot();
 
-        PcoThread::usleep(2000000);//pause
+        PcoThread::usleep(2000000);// simulating the driver taking a break
     }
     log("Van s'arrête proprement");
 }
@@ -59,8 +59,9 @@ void Van::loadAtDepot() {
     size_t bikeInDepot = depot->nbBikes();
     size_t bikesInCargo = cargo.size();
     size_t maxBikesToLoad = std::min((size_t)2, bikeInDepot);
-    size_t canLoad = (VAN_CAPACITY > bikesInCargo) ? (VAN_CAPACITY - bikesInCargo) : 0;
+    size_t canLoad = (VAN_CAPACITY > bikesInCargo) ? (VAN_CAPACITY - bikesInCargo) : 0; // van should be empty but added for safety
     size_t toLoad = std::min(maxBikesToLoad, canLoad);
+
     if (toLoad > 0) {
         std::vector<Bike*> bikes = depot->getBikes(toLoad);
         cargo.insert(cargo.end(), bikes.begin(), bikes.end());
@@ -76,14 +77,14 @@ void Van::loadAtDepot() {
 void Van::balanceSite(unsigned int _site)
 {
     BikeStation* site = stations[_site];
-    // lock the site while we inspect and operate (station methods assume external locking)
+    // lock the station to make sure that state doesn't change while balancing
     site->mutex.lock();
 
     size_t slotsInSite = site->nbSlots();
     size_t bikesInSite = site->nbBikes();
     size_t bikesInCargo = cargo.size();
 
-    if (bikesInSite > slotsInSite - 2) {
+    if (bikesInSite > slotsInSite - 2) { // too many bikes
         size_t maxBikesToLoad = bikesInSite - (slotsInSite - 2);
         size_t canLoad = (VAN_CAPACITY > bikesInCargo) ? (VAN_CAPACITY - bikesInCargo) : 0;
         size_t toLoad = std::min(maxBikesToLoad, canLoad);
@@ -91,13 +92,13 @@ void Van::balanceSite(unsigned int _site)
             std::vector<Bike*> taken = site->getBikes(toLoad);
             cargo.insert(cargo.end(), taken.begin(), taken.end());
         }
-    } else if (bikesInSite < slotsInSite - 2) {
+    } else if (bikesInSite < slotsInSite - 2) { // not enought bikes
         size_t maxBikesToPut = (slotsInSite - 2) - bikesInSite;
         size_t canPut = std::min(maxBikesToPut, bikesInCargo);
         size_t deposed = 0;
-        std::vector<Bike*> bikesToDeposit;
+        std::vector<Bike*> bikesToDeposit; // bikes to deposit at the station
 
-       for (size_t t = 0; t < Bike::nbBikeTypes && deposed < canPut; ++t) { //todo change algo maybe
+       for (size_t t = 0; t < Bike::nbBikeTypes && deposed < canPut; ++t) { // deposit missing types first
             if (site->countBikesOfType(t) == 0) {
                 Bike* b = takeBikeFromCargo(t);
                 if (b != nullptr) {
@@ -106,14 +107,15 @@ void Van::balanceSite(unsigned int _site)
                 }
             }
         }
-        // deposit any type if we still can
+
+        // deposit any type if needed
         while (deposed < canPut && !cargo.empty()) {
             bikesToDeposit.push_back(cargo.back());
             cargo.pop_back();
             ++deposed;
         }
 
-        if (!bikesToDeposit.empty()) {
+        if (!bikesToDeposit.empty()) { // deposit bikes at the station
             site->addBikes(bikesToDeposit);
         }
 
