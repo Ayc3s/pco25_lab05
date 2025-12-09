@@ -76,8 +76,8 @@ L'utilisation des bikeStations par de multiple thread (personne) en même temps 
 nous avons besoins de variables de conditions afin de signaler aux thread plusieurs cas (par exemple : un vélo à été posé dans la bikeStation).
 Mesa s'intégre particulièrement bien à notre labo aussi par le fait que nous faisons des files d'attente, et lorsqu'une de nos conditions sont satisfaites, on peut prévnir le bon thread.
 
-Dans le contexte de ce laboratoire, il est essentiel de gérer correctement l’accès concurrent aux bornes de vélo : les habitants, tout comme le van chargé du restockage, doivent accéder simultanément aux mêmes ressources (les vélos et les places disponibles).
-Pour ceci, on a mis en place cette classe (bikeStation.h):
+
+Présentation de la classe BikeStation :
 
 ``` c++
 class BikeStation
