@@ -17,8 +17,6 @@ On va voir plus tard que c'est ici que notre class implémente un moniteur de Me
 
 Les bikeStations doivent garantir "premier arrivé, premier servis" (FIFO). Voir section, système de ticketing.
 
-
-
 - Les personnes (person.h/cpp)
 
 Ce sont les utilisateurs du système. Ils vont suivre leur routine et 'louer' le vélo qui leur correspond.
@@ -62,17 +60,17 @@ Boucle infinie
 4. Faire une pause.
 Fin de la boucle
 ```
-todo: inserer image simulation
+![img.png](img.png)
 
 
-## Choix de conceptions
-
+# Choix de conceptions
+## BikeStation
 
 ### Moniteur de Mesa
 
 Il nous à été demandé spécifiquement d'utiliser un moniteur de Mesa dans ce laboratoire mais il peut être intéressant de se demander pourquoi.
 
-L'utilisation des bikeStations par de multiple thread (personne) en même temps fait que nous devons faire attention à la concurrence. Ceci étant dit, 
+L'utilisation des bikeStations par de multiples threads (personne et van) en même temps fait que nous devons faire attention à la concurrence. Ceci étant dit, 
 nous avons besoins de variables de conditions afin de signaler aux thread plusieurs cas (par exemple : un vélo à été posé dans la bikeStation).
 Mesa s'intégre particulièrement bien à notre labo aussi par le fait que nous faisons des files d'attente, et lorsqu'une de nos conditions sont satisfaites, on peut prévnir le bon thread.
 
@@ -149,12 +147,13 @@ Comme dit précédamment, on gère dans cette simulation un ordre FIFO pour les 
 - size_t getTickets[Bike::nbBikeTypes] = {0,0,0}; 
 - size_t getNext[Bike::nbBikeTypes] = {0,0,0}; 
 - unsigned int putTicket = 0;
+- unsigned int putNext = 0;
 
 L'utilisation en général est la suivante :
 
-Lorsqu'un utilisateur souhaite déposer ou prendre un vélo, il va se mettre dans la file d'attente qui correspond à la catégorie de sa préférence de vélo en utilisant getTickets.
+Lorsqu'un utilisateur souhaite déposer ou prendre un vélo, il va se mettre dans la file d'attente qui correspond à son action et à sa préférence de vélo.
 
-Ensuite, il va se mettre en attente sur plusieurs conditions (par exemple : aucun vélo dans la bikeStation).
+Ensuite, il va se mettre en attente sur plusieurs conditions (par exemple : il y a pas le velo demandé ou il n'y a pas de place dans la bikestation).
 
 Et enfin, il va se faire reveiller, et si c'est sont tour (donc le bon numéro de ticket), il va pouvoir prendre le vélo.
 
@@ -165,10 +164,10 @@ Notre mutex est notre protection qui permetre de gérér l'accès concurant. Plu
 - std::vector<Bike*> bikes;
 - const size_t capacity;
 
-`bikes` : est un vecteur de bike, qui va stocker les vélos actuellement à la bike station. On va donc devoir protéger tout les accès en lecture/écriture afin de garantir l'intégrité de ce tableau. Par exemple, lorsqu'on veut prendre un vélo, il ne faut pas que ce vélo soit déja pris par un autre thread (people).
+`bikes` : est un vecteur de bike, qui va stocker les vélos actuellement à la bike station. On va donc devoir protéger tout les accès en lecture/écriture afin de garantir l'intégrité de ce tableau. Par exemple, lorsqu'on veut prendre un vélo, il ne faut pas que ce vélo soit déja pris par un autre thread.
 
 
-Et nos variables et fonction du système de ticketing :
+Et nos variables et fonctions du système de ticketing :
 
 - size_t getTickets[Bike::nbBikeTypes] = {0,0,0};
 - size_t getNext[Bike::nbBikeTypes] = {0,0,0};
@@ -178,9 +177,9 @@ Et nos variables et fonction du système de ticketing :
 
 #### PcoConditionVariable
 
-Nous avons décider de faire 3 variables différentes qui représente chaque type de vélo. L'objectif étant de garantir la liste "FIFO" par type de vélo. 
-Cela nous permet que lorsque une personne arrive en premier, mais que sont type de vélo n'est pas disponible, une deuxième personne peut tout de meme prendre sont vélo sans que l'ensembe du système soit bloqué. 
-Cela nous évite aussi de devoir reveiller tous les threads et qu'ils se rendorment si il n'y a pas leur type de vélo.
+Nous avons décider de faire 3 variables différentes qui représente chaque type de vélo. 
+L'objectif étant de séparer les personnes en 3 files d'attente différentes en fonction du vélo qu'elles veulent.
+Nous permettant du coup de faire avancer les files d'attentes indépendament les unes des autres. C'est à dire si la bikeStation est en manque de VTT, les deux autres files d'attentes (route et gravel) peuvent continuer à avancer.
 
 Donc on a :
 
@@ -194,11 +193,22 @@ et aussi:
 
 - PcoConditionVariable isntFull;
 
-Qui va permettre de savoir si oui ou non une bikeStation est full ou pas. Cela permet de reveiller les thread en attente de poser un vélo.
+Qui va permettre de savoir quand une bikeStation n'est plus full. Cela permet de reveiller les thread en attente de poser un vélo.
 
 #### bool ended
 
 Cette variable est un flag qui nous permet de savoir lorsque nous voulons stoper la simulation de prévenir tout les threads et de les arreters correctement.
+
+## Van
+### Utilisation de la bikeStation
+Le van utilise aussi les bikeStation pour déposer et prendre des vélos. Il utilise donc les fonctions publiques de la bikeStation(getBikes et addBikes).
+Nous avons choisi de lock et unlock le mutex de la bikeStation directement dans le van avant d'appeler les fonctions de la bikeStation. Ceci est necessaire pour d'assurer l'etat de bikestation entre la vérification du stock de la bikestation et le restock, (par exemple une personne qui prend un vélo).
+## Person
+### Utilisation de la bikeStation
+todo: il y a pas grand chose à dire ici, la personne utilise les fonctions publiques de la bikeStation (getBike et putBike).
+# Methodologie de test
+## Tests unitaires
+todo:
 
 # Conclusion
 

@@ -55,6 +55,7 @@ void Person::run() {
         unsigned int walkDest = chooseOtherSite(currentSite);
         walkTo(walkDest);
     }
+    log("Personne s'arrête proprement");
 }
 
 Bike* Person::takeBikeFromSite(unsigned int _site) {
