@@ -60,6 +60,10 @@ Boucle infinie
 4. Faire une pause.
 Fin de la boucle
 ```
+
+
+On a ici une image qui représente la simulation. Il y'a le van en vert, les différentes personnes qui comment dit précedamment, on leur routine,
+
 ![img.png](img.png)
 
 
@@ -199,16 +203,31 @@ Qui va permettre de savoir quand une bikeStation n'est plus full. Cela permet de
 
 Cette variable est un flag qui nous permet de savoir lorsque nous voulons stoper la simulation de prévenir tout les threads et de les arreters correctement.
 
+
+# Utilisation de la BikeStation par le Van
+
+Cette partie va expliquer l'utilisation de la bikeStation et amener des compléments surtout sur 'Van' et ses interactions avec la partie critque et l'accès aux sections partagée.
+
 ## Van
-### Utilisation de la bikeStation
+
 Le van utilise aussi les bikeStation pour déposer et prendre des vélos. Il utilise donc les fonctions publiques de la bikeStation(getBikes et addBikes).
 Nous avons choisi de lock et unlock le mutex de la bikeStation directement dans le van avant d'appeler les fonctions de la bikeStation. Ceci est necessaire pour d'assurer l'etat de bikestation entre la vérification du stock de la bikestation et le restock, (par exemple une personne qui prend un vélo).
-## Person
-### Utilisation de la bikeStation
-todo: il y a pas grand chose à dire ici, la personne utilise les fonctions publiques de la bikeStation (getBike et putBike).
-# Methodologie de test
-## Tests unitaires
-todo:
+
+## Personne
+
+Les personnes utilisent majoritairement les fonctions getBike et putBike. Le mutex est donc lock et unlock dans ces fonctions la directement.
+
+# Tests unitaires
+
+Nous avons essayer de faire des tests unitaires pour ce labo afin de s'assurer l'intégrité du programme, mais à cause de conflit avec Qt et des libraires nous n'arrivons pas à compiler. Nous avons tenter de demander aux autres groupes, ils ont le même problème. Bien que tardif, nous avons tenté aussi de vous joindre sur Teams pour ce problème.
+
+Mais dans le cas ou cela compilerait, on aurait fait de multiples tests testants tout les accès concurant, notre logique de perssone et du van, et bien d'autre.
+
+# Utilisation de l'IA
+
+Aucune utilisation de l'IA pour ce projet.
+
+
 
 # Conclusion
 
